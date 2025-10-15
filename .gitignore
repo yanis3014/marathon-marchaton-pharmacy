@@ -1,0 +1,59 @@
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Editors/IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Logs ---
+logs/
+*.log
+*.log.*
+
+# --- Node (both apps) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Build outputs ---
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# --- Next.js (frontend) ---
+.next/
+.next/cache/
+out/
+.vercel/
+
+# --- Env files (keep examples tracked) ---
+.env
+.env.local
+.env.*.local
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+backend/.env
+backend/.env.local
+backend/.env.*.local
+!.env.example
+!frontend/.env.example
+!backend/.env.example
+
+# --- Databases / temp storage (backend) ---
+backend/data.sqlite
+backend/*.sqlite
+backend/*.sqlite-journal
+tmp/
+temp/
+uploads/
+
+# --- Misc ---
+*.pid
+*.seed
