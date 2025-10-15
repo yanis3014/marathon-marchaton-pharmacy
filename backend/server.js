@@ -1,12 +1,13 @@
+// server.js (ESM)
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { Sequelize, DataTypes } from "sequelize";
 import * as dotenv from "dotenv";
-import { format } from "node:util";
-import { format as csvFormat } from "@fast-csv/format";
 import { Readable } from "stream";
+import { format as csvFormat } from "@fast-csv/format";
 import nodemailer from "nodemailer";
 import QRCode from "qrcode";
 import { customAlphabet } from "nanoid";
@@ -16,21 +17,56 @@ import { DateTime } from "luxon";
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1);
 
-// CORS: allow frontend origin or all in dev
-const allowedOrigin = process.env.ALLOWED_ORIGIN || "*";
-app.use(cors({ origin: allowedOrigin, credentials: false }));
+// ---------------------------
+// CORS (prod + previews Vercel)
+// ---------------------------
+const allowList = (
+  process.env.ALLOWED_ORIGINS ||
+  process.env.ALLOWED_ORIGIN ||
+  ""
+)
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
+const originRegex = process.env.ALLOWED_ORIGIN_REGEX
+  ? new RegExp(process.env.ALLOWED_ORIGIN_REGEX)
+  : null;
+
+app.use(
+  cors({
+    origin(origin, cb) {
+      // autoriser appels serveur→serveur (curl, cron, health checks)
+      if (!origin) return cb(null, true);
+      if (allowList.includes(origin)) return cb(null, true);
+      if (originRegex && originRegex.test(origin)) return cb(null, true);
+      return cb(new Error("Not allowed by CORS: " + origin));
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "x-admin-token"],
+    optionsSuccessStatus: 204,
+  })
+);
+// OPTIONS préflight
+app.options("*", cors());
+
+// ---------------------------
+// Sécurité & limites
+// ---------------------------
 app.use(helmet());
+app.use(rateLimit({ windowMs: 60_000, max: 300 })); // 300 req / min / IP
+
+// ---------------------------
+// Parsers body
+// ---------------------------
 app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-});
-app.use(limiter);
-
-// Database: Postgres if DATABASE_URL set, otherwise SQLite
+// ---------------------------
+// Base de données
+// ---------------------------
 let sequelize;
 if (process.env.DATABASE_URL) {
   sequelize = new Sequelize(process.env.DATABASE_URL, {
@@ -49,7 +85,7 @@ if (process.env.DATABASE_URL) {
   });
 }
 
-// Model
+// Modèle des inscriptions
 const Registration = sequelize.define(
   "Registration",
   {
@@ -90,30 +126,9 @@ const Registration = sequelize.define(
   }
 );
 
-// Email transporter (SMTP)
-async function sendReminderEmail(reg, daysLeft) {
-  const transporter = createTransport();
-  if (!transporter) {
-    console.warn("No SMTP configured, skipping reminder emails.");
-    return;
-  }
-  const html = `
-  <div style="font-family:Arial,sans-serif">
-    <h2>Pharmathon & marchathon — Rappel (${daysLeft} jours)</h2>
-    <p>Bonjour ${reg.fullName},</p>
-    <p>L'événement approche ! Nous vous attendons le <strong>16 novembre 2025</strong> à la <em>Faculté de Pharmacie de Monastir</em>.</p>
-    <p>Épreuve : <strong>${reg.eventChoice}</strong></p>
-    <p>Merci d'apporter votre QR code de pointage reçu par email lors de votre inscription.</p>
-    <p>À très vite !</p>
-  </div>`;
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM || "no-reply@pharmathon.example",
-    to: reg.email,
-    subject: `Rappel — Pharmathon & marchathon (J-${daysLeft})`,
-    html,
-  });
-}
-
+// ---------------------------
+// SMTP / E-mails
+// ---------------------------
 function createTransport() {
   const host = process.env.SMTP_HOST;
   const port = parseInt(process.env.SMTP_PORT || "587", 10);
@@ -123,7 +138,7 @@ function createTransport() {
   return nodemailer.createTransport({
     host,
     port,
-    secure: port === 465,
+    secure: port === 465, // 465 = SSL
     auth: { user, pass },
   });
 }
@@ -133,7 +148,7 @@ const nano = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 10);
 async function sendConfirmationEmail(reg) {
   const transporter = createTransport();
   if (!transporter) {
-    console.warn("No SMTP configured, skipping emails.");
+    console.warn("No SMTP configured, skipping confirmation email.");
     return;
   }
   const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3001";
@@ -141,7 +156,7 @@ async function sendConfirmationEmail(reg) {
     reg.confirmToken
   )}`;
 
-  // QR code encodes the check-in code (not admin token)
+  // Génère l'image PNG du QR (checkinCode)
   const qrPng = await QRCode.toBuffer(reg.checkinCode, {
     type: "png",
     width: 512,
@@ -164,7 +179,7 @@ async function sendConfirmationEmail(reg) {
   </div>`;
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || "no-reply@pharmathon.example",
+    from: process.env.SMTP_FROM || "Pharmathon FPHM <no-reply@example.local>",
     to: reg.email,
     subject: "Confirmation d'inscription — Pharmathon & marchathon (FPHM)",
     html,
@@ -172,7 +187,32 @@ async function sendConfirmationEmail(reg) {
   });
 }
 
-// util validation
+async function sendReminderEmail(reg, daysLeft) {
+  const transporter = createTransport();
+  if (!transporter) {
+    console.warn("No SMTP configured, skipping reminder emails.");
+    return;
+  }
+  const html = `
+  <div style="font-family:Arial,sans-serif">
+    <h2>Pharmathon & marchathon — Rappel (J-${daysLeft})</h2>
+    <p>Bonjour ${reg.fullName},</p>
+    <p>L'événement approche ! Nous vous attendons le <strong>16 novembre 2025</strong> à la <em>Faculté de Pharmacie de Monastir</em>.</p>
+    <p>Épreuve : <strong>${reg.eventChoice}</strong></p>
+    <p>Merci d'apporter votre QR code de pointage reçu par email lors de votre inscription.</p>
+    <p>À très vite !</p>
+  </div>`;
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || "Pharmathon FPHM <no-reply@example.local>",
+    to: reg.email,
+    subject: `Rappel — Pharmathon & marchathon (J-${daysLeft})`,
+    html,
+  });
+}
+
+// ---------------------------
+// Utils validation / parsing
+// ---------------------------
 function isValidPhone(str) {
   return /^[0-9+\-\s]{6,20}$/.test(str || "");
 }
@@ -203,57 +243,16 @@ function parseBody(req) {
   const choices = ["Pharmathon (8 km)", "marchathon (4 km)"];
   if (!choices.includes(eventChoice))
     errors.push("Choix de l’épreuve invalide.");
+
   return {
     data: { fullName, dob, sex, phone, email, affiliation, eventChoice },
     errors,
   };
 }
 
-// routes
-
-app.get("/api/confirm", async (req, res) => {
-  const { token } = req.query;
-  if (!token) return res.status(400).send("Token manquant.");
-  const reg = await Registration.findOne({ where: { confirmToken: token } });
-  if (!reg) return res.status(404).send("Token invalide.");
-  reg.confirmed = true;
-  await reg.save();
-  // If a frontend URL is provided, redirect to a pretty page
-  const front = process.env.FRONTEND_BASE_URL;
-  if (front) return res.redirect(`${front}/confirm?status=ok`);
-  res.send("Adresse e-mail confirmée. Merci !");
-});
-
-app.get("/api/health", (req, res) => {
-  res.json({ ok: true, now: new Date().toISOString() });
-});
-
-app.post("/api/register", async (req, res) => {
-  try {
-    const { data, errors } = parseBody(req);
-    if (errors.length) return res.status(400).json({ ok: false, errors });
-    const created = await Registration.create({
-      ...data,
-      confirmToken: nano(),
-      checkinCode: nano(),
-    });
-    // Fire-and-forget email (no await blocking response)
-    sendConfirmationEmail(created).catch((err) =>
-      console.error("Email error:", err)
-    );
-    res.json({ ok: true, registration: { id: created.id } });
-  } catch (err) {
-    if (err.name === "SequelizeUniqueConstraintError") {
-      return res.status(409).json({
-        ok: false,
-        errors: ["Cette adresse e-mail est déjà inscrite pour cette épreuve."],
-      });
-    }
-    console.error(err);
-    res.status(500).json({ ok: false, error: "Erreur serveur." });
-  }
-});
-
+// ---------------------------
+// Middlewares / helpers admin
+// ---------------------------
 function requireAdmin(req, res, next) {
   const token = req.header("x-admin-token");
   if (!token || token !== (process.env.ADMIN_TOKEN || "")) {
@@ -262,16 +261,19 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// --- Reminders scheduler ---
+// ---------------------------
+// Rappels J-7 / J-3 / J-1
+// ---------------------------
 const EVENT_DATE_ISO = process.env.EVENT_DATE || "2025-11-16";
 const TZ = process.env.TIMEZONE || "Africa/Tunis";
-const REMINDER_HOUR = parseInt(process.env.REMINDER_HOUR || "9", 10); // 9h locale
+const REMINDER_HOUR = parseInt(process.env.REMINDER_HOUR || "9", 10);
 
 async function processReminders() {
   const now = DateTime.now().setZone(TZ);
   const eventDate = DateTime.fromISO(EVENT_DATE_ISO, { zone: TZ }).endOf("day");
   const daysLeft = Math.ceil(eventDate.diff(now, "days").days);
-  const targetFlags =
+
+  const targetFlag =
     daysLeft === 7
       ? "reminded7"
       : daysLeft === 3
@@ -279,10 +281,12 @@ async function processReminders() {
       : daysLeft === 1
       ? "reminded1"
       : null;
-  if (!targetFlags) return { skipped: true, daysLeft };
+
+  if (!targetFlag) return { skipped: true, daysLeft };
 
   const regs = await Registration.findAll({ where: { confirmed: true } });
   let sent = 0;
+
   for (const r of regs) {
     if (daysLeft === 7 && !r.reminded7) {
       await sendReminderEmail(r, 7);
@@ -303,10 +307,11 @@ async function processReminders() {
       sent++;
     }
   }
+
   return { skipped: false, daysLeft, sent };
 }
 
-// Cron: every day at REMINDER_HOUR:00
+// Cron quotidien HH:00 dans le fuseau spécifié
 cron.schedule(
   `0 ${REMINDER_HOUR} * * *`,
   async () => {
@@ -321,7 +326,52 @@ cron.schedule(
   { timezone: TZ }
 );
 
-// Admin manual trigger
+// ---------------------------
+// Routes
+// ---------------------------
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true, now: new Date().toISOString() });
+});
+
+app.get("/api/confirm", async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).send("Token manquant.");
+  const reg = await Registration.findOne({ where: { confirmToken: token } });
+  if (!reg) return res.status(404).send("Token invalide.");
+  reg.confirmed = true;
+  await reg.save();
+  const front = process.env.FRONTEND_BASE_URL;
+  if (front) return res.redirect(`${front}/confirm?status=ok`);
+  res.send("Adresse e-mail confirmée. Merci !");
+});
+
+app.post("/api/register", async (req, res) => {
+  try {
+    const { data, errors } = parseBody(req);
+    if (errors.length) return res.status(400).json({ ok: false, errors });
+    const created = await Registration.create({
+      ...data,
+      confirmToken: nano(),
+      checkinCode: nano(),
+    });
+    // envoi d'email non bloquant
+    sendConfirmationEmail(created).catch((err) =>
+      console.error("Email error:", err)
+    );
+    res.json({ ok: true, registration: { id: created.id } });
+  } catch (err) {
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return res.status(409).json({
+        ok: false,
+        errors: ["Cette adresse e-mail est déjà inscrite pour cette épreuve."],
+      });
+    }
+    console.error(err);
+    res.status(500).json({ ok: false, error: "Erreur serveur." });
+  }
+});
+
+// Déclenchement manuel des rappels (protégé)
 app.post("/api/admin/send-reminders", requireAdmin, async (req, res) => {
   try {
     const result = await processReminders();
@@ -332,11 +382,13 @@ app.post("/api/admin/send-reminders", requireAdmin, async (req, res) => {
   }
 });
 
+// Liste officielle (admin)
 app.get("/api/registrations", requireAdmin, async (req, res) => {
   const list = await Registration.findAll({ order: [["createdAt", "DESC"]] });
   res.json({ ok: true, registrations: list });
 });
 
+// Check-in officiel (admin)
 app.post("/api/admin/checkin", requireAdmin, async (req, res) => {
   const { code } = req.body || {};
   if (!code) return res.status(400).json({ ok: false, error: "Code requis." });
@@ -345,18 +397,46 @@ app.post("/api/admin/checkin", requireAdmin, async (req, res) => {
     return res.status(404).json({ ok: false, error: "Code introuvable." });
   reg.checkinAt = new Date();
   await reg.save();
-  res.json({ ok: true, registration: reg });
+  res.json({ ok: true, registration: reg, name: reg.fullName });
 });
 
+// --- Alias compat (optionnel) ---
+app.get("/api/participants", requireAdmin, async (req, res) => {
+  const regs = await Registration.findAll({ order: [["createdAt", "DESC"]] });
+  const out = regs.map((r) => ({
+    id: r.id,
+    fullName: r.fullName,
+    email: r.email,
+    eventChoice: r.eventChoice,
+    checkedIn: !!r.checkinAt,
+    qrCode: r.checkinCode,
+  }));
+  res.json({ ok: true, registrations: out });
+});
+
+app.post("/api/checkin/:code", requireAdmin, async (req, res) => {
+  const { code } = req.params;
+  const reg = await Registration.findOne({ where: { checkinCode: code } });
+  if (!reg)
+    return res.status(404).json({ ok: false, error: "Code introuvable" });
+  reg.checkinAt = new Date();
+  await reg.save();
+  res.json({ ok: true, name: reg.fullName });
+});
+
+// Export CSV (admin)
 app.get("/api/export/csv", requireAdmin, async (req, res) => {
   const rows = await Registration.findAll({ order: [["createdAt", "DESC"]] });
-  const stream = Readable.from(rows.map((r) => r.toJSON()));
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", "attachment; filename=inscriptions.csv");
+  const stream = Readable.from(rows.map((r) => r.toJSON()));
   const csvStream = csvFormat({ headers: true });
   stream.pipe(csvStream).pipe(res);
 });
 
+// ---------------------------
+// Démarrage
+// ---------------------------
 const PORT = process.env.PORT || 3001;
 
 async function start() {

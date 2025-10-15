@@ -1,108 +1,168 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
+const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
 
+/**
+ * Page Admin :
+ * - Demande le ADMIN_TOKEN
+ * - Liste les inscriptions via GET /api/registrations (header x-admin-token)
+ * - Valide les présences via POST /api/admin/checkin (body { code }, header x-admin-token)
+ */
 export default function Admin() {
-  const [participants, setParticipants] = useState([]);
+  const [token, setToken] = useState("");
+  const [entered, setEntered] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [list, setList] = useState([]);
   const [search, setSearch] = useState("");
-  const [scanning, setScanning] = useState(false);
-  const [message, setMessage] = useState("");
+  const [code, setCode] = useState("");
 
-  // Charger la liste des inscrits
+  // Récupère le token mémorisé pour éviter de le retaper à chaque refresh
   useEffect(() => {
-    fetch(`${API_BASE}/api/participants`)
-      .then((res) => res.json())
-      .then((data) => setParticipants(data))
-      .catch(() => setMessage("Erreur lors du chargement des participants"));
+    const saved = localStorage.getItem("adminToken");
+    if (saved) {
+      setToken(saved);
+      setEntered(true);
+      load(saved);
+    }
   }, []);
 
-  // Scanner QR
-  useEffect(() => {
-    if (!scanning) return;
-    const scanner = new Html5QrcodeScanner("qr-reader", {
-      fps: 10,
-      qrbox: 250,
-    });
-    scanner.render(onScanSuccess, onScanError);
+  async function enter(e) {
+    e.preventDefault();
+    if (!token) return;
+    localStorage.setItem("adminToken", token);
+    setEntered(true);
+    await load(token);
+  }
 
-    function onScanSuccess(decodedText) {
-      setScanning(false);
-      scanner.clear();
-      handleCheckIn(decodedText);
-    }
-    function onScanError(err) {
-      console.warn(err);
-    }
-
-    return () => {
-      try {
-        scanner.clear();
-      } catch {}
-    };
-  }, [scanning]);
-
-  // Validation présence via QR
-  async function handleCheckIn(code) {
+  async function load(currentToken = token) {
     try {
-      const res = await fetch(`${API_BASE}/api/checkin/${code}`, {
-        method: "POST",
+      setLoading(true);
+      setMsg("");
+      const res = await fetch(`${API}/api/registrations`, {
+        headers: { "x-admin-token": currentToken },
+        cache: "no-store",
       });
-      const data = await res.json();
-      if (data.ok) {
-        setMessage(`✅ ${data.name || "Participant"} validé !`);
-        setParticipants((prev) =>
-          prev.map((p) => (p.qrCode === code ? { ...p, checkedIn: true } : p))
-        );
-      } else {
-        setMessage("❌ QR invalide ou déjà validé.");
+      if (!res.ok) {
+        setMsg(`Erreur chargement (${res.status})`);
+        setList([]);
+        return;
       }
-    } catch {
-      setMessage("Erreur lors du check-in.");
+      const data = await res.json();
+      // Le backend peut renvoyer { ok:true, registrations: [...] } ou directement un tableau
+      const items = Array.isArray(data) ? data : data.registrations || [];
+      // Normalise pour l’affichage
+      const normalized = items.map((r) => ({
+        id: r.id,
+        fullName: r.fullName,
+        email: r.email,
+        eventChoice: r.eventChoice,
+        checkinAt: r.checkinAt,
+      }));
+      setList(normalized);
+    } catch (e) {
+      setMsg("Erreur réseau");
+    } finally {
+      setLoading(false);
     }
   }
 
-  const filtered = participants.filter((p) =>
+  async function doCheckin() {
+    if (!code) return;
+    try {
+      setMsg("");
+      const res = await fetch(`${API}/api/admin/checkin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-token": token,
+        },
+        body: JSON.stringify({ code: code.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok !== false) {
+        setMsg(`✅ Présence validée${data.name ? ` : ${data.name}` : ""}`);
+        setCode("");
+        await load();
+      } else {
+        setMsg(`❌ ${data.error || "QR/code invalide"}`);
+      }
+    } catch (e) {
+      setMsg("Erreur réseau");
+    }
+  }
+
+  if (!entered) {
+    return (
+      <main className="section">
+        <div className="card max-w-md mx-auto">
+          <form onSubmit={enter} className="card-inner grid gap-3">
+            <h1 className="h2">Espace Admin</h1>
+            <p className="muted text-sm">
+              Entrez le <code>ADMIN_TOKEN</code> pour accéder aux inscrits.
+            </p>
+            <input
+              className="input"
+              placeholder="ADMIN_TOKEN"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              required
+            />
+            <button className="btn btn-primary">Entrer</button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
+  const filtered = list.filter((p) =>
     (p.fullName || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <main className="section space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between gap-4">
         <h1 className="h2">Espace Admin</h1>
-        <div className="flex gap-3">
+        <div className="flex gap-2 items-center">
           <input
-            type="text"
-            placeholder="Rechercher un participant..."
             className="input w-64"
+            placeholder="Rechercher un nom…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button
-            onClick={() => setScanning(!scanning)}
-            className={`btn ${scanning ? "btn-outline" : "btn-primary"}`}
-          >
-            {scanning ? "Arrêter" : "Scanner QR"}
+          <button className="btn btn-ghost" onClick={() => load()}>
+            {loading ? "Chargement…" : "Rafraîchir"}
           </button>
         </div>
       </div>
 
-      {message && (
-        <div className="rounded-xl bg-lime-100 text-lime-800 border border-lime-300 p-3">
-          {message}
+      {msg && (
+        <div className="rounded-xl border border-lime-300 bg-lime-100 text-lime-800 p-3">
+          {msg}
         </div>
       )}
 
-      {scanning && (
-        <div className="card">
-          <div className="card-inner">
-            <h3 className="font-semibold mb-2">Scanner un QR</h3>
-            <div id="qr-reader" className="w-full" />
+      {/* Bloc check-in manuel (tu peux aussi scanner un QR et coller son code ici) */}
+      <div className="card">
+        <div className="card-inner flex flex-col md:flex-row gap-3 items-start md:items-end">
+          <div className="grow">
+            <label className="label">
+              Valider une présence (code / QR décodé)
+            </label>
+            <input
+              className="input"
+              placeholder="Coller le code du QR ici…"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+            />
           </div>
+          <button className="btn btn-primary" onClick={doCheckin}>
+            Valider
+          </button>
         </div>
-      )}
+      </div>
 
       <div className="card overflow-x-auto">
         <table className="table">
@@ -118,7 +178,7 @@ export default function Admin() {
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan="4" className="text-center text-gray-500 py-4">
-                  Aucun participant trouvé
+                  Aucun inscrit
                 </td>
               </tr>
             ) : (
@@ -128,7 +188,7 @@ export default function Admin() {
                   <td>{p.eventChoice}</td>
                   <td>{p.email}</td>
                   <td>
-                    {p.checkedIn ? (
+                    {p.checkinAt ? (
                       <span className="text-lime-600 font-semibold">
                         ✔ Présent
                       </span>
