@@ -2,15 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+:root {
+  color-scheme: light;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  @apply bg-gradient-to-br from-sky-50 via-white to-lime-50 text-gray-900 antialiased;
+}
 
-body { @apply bg-gray-50 text-gray-900; }
+.container-default {
+  @apply mx-auto max-w-6xl px-4;
+}
+.section {
+  @apply py-12 md:py-16;
+}
+.card {
+  @apply rounded-3xl bg-white/80 backdrop-blur shadow-sm hover:shadow-md transition-shadow;
+}
+.card-inner {
+  @apply p-6 md:p-8;
+}
 
 .btn {
-  @apply inline-flex items-center justify-center rounded-2xl px-5 py-3 font-medium shadow-sm hover:shadow-md transition;
+  @apply inline-flex items-center justify-center rounded-2xl px-5 py-3 font-semibold shadow-sm transition transform-gpu active:scale-[.98];
 }
-.btn-primary { @apply bg-blue-600 text-white; }
-.btn-outline { @apply border border-gray-300 bg-white text-gray-900; }
-.card { @apply rounded-2xl bg-white p-6 shadow-sm; }
-.input { @apply w-full rounded-xl border border-gray-300 bg-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500; }
-.label { @apply text-sm font-medium text-gray-700; }
+.btn-primary {
+  @apply bg-lime-600 text-white hover:bg-lime-700;
+}
+.btn-ghost {
+  @apply bg-white/70 text-gray-900 border border-gray-200 hover:bg-white;
+}
+.btn-outline {
+  @apply border border-lime-200 bg-lime-50 text-lime-700 hover:bg-lime-100;
+}
+.badge {
+  @apply inline-flex items-center gap-2 rounded-full bg-lime-50 px-3 py-1 text-xs font-medium text-lime-700;
+}
+.input {
+  @apply w-full rounded-xl border border-gray-300 bg-white/90 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-lime-500;
+}
+.label {
+  @apply text-sm font-medium text-gray-700;
+}
+
+.blob {
+  position: absolute;
+  filter: blur(40px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+.blob-1 {
+  background: radial-gradient(
+    40% 40% at 50% 50%,
+    hsl(124, 70%, 36%) 0%,
+    rgba(96, 165, 250, 0) 70%
+  );
+  width: 28rem;
+  height: 28rem;
+  top: -6rem;
+  left: -6rem;
+}
+.blob-2 {
+  background: radial-gradient(
+    40% 40% at 50% 50%,
+    #5fffa7 0%,
+    rgba(167, 139, 250, 0) 70%
+  );
+  width: 26rem;
+  height: 26rem;
+  bottom: -6rem;
+  right: -6rem;
+}
+
+.h1 {
+  @apply text-4xl md:text-6xl font-extrabold tracking-tight;
+}
+.h2 {
+  @apply text-2xl md:text-3xl font-bold;
+}
+.muted {
+  @apply text-gray-600;
+}
+
+.table {
+  @apply min-w-full border overflow-hidden rounded-2xl;
+}
+.table thead {
+  @apply bg-gray-50;
+}
+.table th,
+.table td {
+  @apply px-3 py-2 border-b text-left text-sm;
+}
