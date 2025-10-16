@@ -1,33 +1,50 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 export default function Admin() {
-  const [token, setToken] = useState("");
-  const [entered, setEntered] = useState(false);
+  const [token, setToken] = useState(""); // L'unique état pour gérer la connexion
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [list, setList] = useState([]);
   const [search, setSearch] = useState("");
   const [code, setCode] = useState("");
   const [showScanner, setShowScanner] = useState(false);
-
-  // --- NOUVEAUX ÉTATS POUR LA MODALE ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState(null);
-  // ------------------------------------
+
+  // --- GESTION DE LA SESSION AVEC TIMEOUT ---
+  const timeoutIdRef = useRef(null);
+
+  const logout = () => {
+    setToken(""); // Vide le token, ce qui déconnecte
+    setMsg("Session expirée. Veuillez vous reconnecter.");
+  };
+
+  const resetSessionTimeout = () => {
+    if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+    timeoutIdRef.current = setTimeout(logout, SESSION_TIMEOUT_MS);
+  };
 
   useEffect(() => {
-    const saved = localStorage.getItem("adminToken");
-    if (saved) {
-      setToken(saved);
-      setEntered(true);
-      load(saved);
+    if (token) {
+      resetSessionTimeout();
+      window.addEventListener("mousemove", resetSessionTimeout);
+      window.addEventListener("mousedown", resetSessionTimeout);
+      window.addEventListener("keypress", resetSessionTimeout);
     }
-  }, []);
+    return () => {
+      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+      window.removeEventListener("mousemove", resetSessionTimeout);
+      window.removeEventListener("mousedown", resetSessionTimeout);
+      window.removeEventListener("keypress", resetSessionTimeout);
+    };
+  }, [token]);
+  // --- FIN DE LA GESTION DE SESSION ---
 
   useEffect(() => {
     if (!showScanner) return;
@@ -48,13 +65,32 @@ export default function Admin() {
     };
   }, [showScanner]);
 
+  // --- CONNEXION AVEC UTILISATEUR/MOT DE PASSE ---
   async function enter(e) {
     e.preventDefault();
-    if (!token) return;
-    localStorage.setItem("adminToken", token);
-    setEntered(true);
-    await load(token);
+    const form = new FormData(e.currentTarget);
+    const user = form.get("user");
+    const password = form.get("password");
+
+    try {
+      setMsg("");
+      const res = await fetch(`${API}/api/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user, password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        setToken(data.token); // Stocke le token reçu dans l'état
+        await load(data.token);
+      } else {
+        setMsg(data.error || "Échec de la connexion.");
+      }
+    } catch (err) {
+      setMsg("Erreur réseau lors de la connexion.");
+    }
   }
+  // ---------------------------------------------
 
   async function load(currentToken = token) {
     try {
@@ -65,12 +101,12 @@ export default function Admin() {
         cache: "no-store",
       });
       if (!res.ok) {
-        setMsg(`Erreur chargement (${res.status})`);
+        if (res.status === 401) logout();
+        else setMsg(`Erreur chargement (${res.status})`);
         setList([]);
         return;
       }
       const data = await res.json();
-      // MODIFIÉ : On garde toutes les données pour la modale
       setList(Array.isArray(data) ? data : data.registrations || []);
     } catch (e) {
       setMsg("Erreur réseau");
@@ -102,7 +138,6 @@ export default function Admin() {
     }
   }
 
-  // --- NOUVELLES FONCTIONS POUR GÉRER LA MODALE ---
   const openModal = (participant) => {
     setSelectedParticipant(participant);
     setIsModalOpen(true);
@@ -112,23 +147,29 @@ export default function Admin() {
     setIsModalOpen(false);
     setSelectedParticipant(null);
   };
-  // ---------------------------------------------
 
-  if (!entered) {
-    // ... (formulaire de login inchangé)
+  // Si aucun token n'est dans l'état, on affiche le formulaire de connexion
+  if (!token) {
     return (
       <main className="section">
         <div className="card max-w-md mx-auto">
           <form onSubmit={enter} className="card-inner grid gap-3">
             <h1 className="h2">Espace Admin</h1>
+            {msg && <p className="text-sm text-red-600">{msg}</p>}
             <p className="muted text-sm">
-              Entrez le <code>ADMIN_TOKEN</code> pour accéder aux inscrits.
+              Entrez vos identifiants pour accéder aux inscrits.
             </p>
             <input
+              name="user"
               className="input"
-              placeholder="ADMIN_TOKEN"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
+              placeholder="Nom d'utilisateur"
+              required
+            />
+            <input
+              name="password"
+              type="password"
+              className="input"
+              placeholder="Mot de passe"
               required
             />
             <button className="btn btn-primary">Entrer</button>
@@ -138,16 +179,14 @@ export default function Admin() {
     );
   }
 
+  // Sinon, on affiche le tableau de bord admin
   const filtered = list.filter((p) =>
     (p.fullName || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <>
-      {" "}
-      {/* Fragment pour envelopper la page et la modale */}
       <main className="section space-y-6">
-        {/* ... (haut de la page admin inchangé) ... */}
         <div className="flex flex-col md:flex-row justify-between gap-4">
           <h1 className="h2">Espace Admin</h1>
           <div className="flex gap-2 items-center">
@@ -216,7 +255,7 @@ export default function Admin() {
                 <th>Email</th>
                 <th>Épreuve</th>
                 <th>Présence</th>
-                <th>Actions</th> {/* <-- NOUVELLE COLONNE */}
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -243,7 +282,6 @@ export default function Admin() {
                       )}
                     </td>
                     <td>
-                      {/* <-- NOUVEAU BOUTON "DÉTAILS" --> */}
                       <button
                         className="btn btn-ghost text-xs py-1 px-2"
                         onClick={() => openModal(p)}
@@ -258,7 +296,7 @@ export default function Admin() {
           </table>
         </div>
       </main>
-      {/* --- NOUVEAU BLOC : LA FENÊTRE MODALE --- */}
+
       {isModalOpen && selectedParticipant && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -297,7 +335,6 @@ export default function Admin() {
           </div>
         </div>
       )}
-      {/* ------------------------------------ */}
     </>
   );
 }
