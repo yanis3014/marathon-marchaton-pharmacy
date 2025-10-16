@@ -104,6 +104,7 @@ const Registration = sequelize.define(
         "Enseignant(e)",
         "Pharmacien(ne)",
         "Personnel",
+        "Technicien(ne)",
         "Ancien(ne) diplômé(e)",
         "Famille / accompagnant"
       ),
@@ -235,6 +236,7 @@ function parseBody(req) {
     "Enseignant(e)",
     "Pharmacien(ne)",
     "Personnel",
+    "Technicien(ne)",
     "Ancien(ne) diplômé(e)",
     "Famille / accompagnant",
   ];

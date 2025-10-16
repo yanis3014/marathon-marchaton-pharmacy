@@ -55,11 +55,16 @@ export default function Admin() {
       const items = Array.isArray(data) ? data : data.registrations || [];
       // Normalise pour l’affichage
       const normalized = items.map((r) => ({
-        id: r.id,
+        id: r.id, // <--- Numéro d'inscription
         fullName: r.fullName,
         email: r.email,
+        phone: r.phone, // <--- Ajout
+        dob: r.dob, // <--- Ajout
+        sex: r.sex, // <--- Ajout
+        affiliation: r.affiliation, // <--- Ajout
         eventChoice: r.eventChoice,
         checkinAt: r.checkinAt,
+        confirmed: r.confirmed, // <--- Ajout
       }));
       setList(normalized);
     } catch (e) {
@@ -168,25 +173,33 @@ export default function Admin() {
         <table className="table">
           <thead>
             <tr>
+              <th># Dossard</th> {/* <--- Modifié */}
               <th>Nom</th>
               <th>Épreuve</th>
-              <th>Email</th>
+              <th>Téléphone</th> {/* <--- Ajout */}
+              <th>Affiliation</th> {/* <--- Ajout */}
               <th>Présence</th>
+              <th>Confirmé</th> {/* <--- Ajout */}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan="4" className="text-center text-gray-500 py-4">
+                <td colSpan="7" className="text-center text-gray-500 py-4">
+                  {" "}
+                  {/* <--- colSpan à 7 */}
                   Aucun inscrit
                 </td>
               </tr>
             ) : (
               filtered.map((p) => (
                 <tr key={p.id} className="hover:bg-lime-50">
+                  <td className="font-mono">{p.id}</td>{" "}
+                  {/* <--- Numéro de dossard */}
                   <td>{p.fullName}</td>
                   <td>{p.eventChoice}</td>
-                  <td>{p.email}</td>
+                  <td>{p.phone}</td> {/* <--- Ajout */}
+                  <td>{p.affiliation}</td> {/* <--- Ajout */}
                   <td>
                     {p.checkinAt ? (
                       <span className="text-lime-600 font-semibold">
@@ -194,6 +207,15 @@ export default function Admin() {
                       </span>
                     ) : (
                       <span className="text-gray-400">Absent</span>
+                    )}
+                  </td>
+                  <td>
+                    {" "}
+                    {/* <--- Ajout */}
+                    {p.confirmed ? (
+                      <span className="text-lime-600">Oui</span>
+                    ) : (
+                      <span className="text-red-500">Non</span>
                     )}
                   </td>
                 </tr>

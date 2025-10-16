@@ -90,6 +90,7 @@ export default function Inscription() {
                 <option>Enseignant(e)</option>
                 <option>Pharmacien(ne)</option>
                 <option>Personnel</option>
+                <option>Technicien(ne)</option>
                 <option>Ancien(ne) diplômé(e)</option>
                 <option>Famille / accompagnant</option>
               </select>
