@@ -374,6 +374,26 @@ cron.schedule(
 // ---------------------------
 // Routes
 // ---------------------------
+app.post("/api/admin/login", (req, res) => {
+  const { user, password } = req.body;
+  const adminUser = process.env.ADMIN_USER;
+  const adminPass = process.env.ADMIN_PASSWORD;
+
+  // Vérifie si les identifiants correspondent à ceux dans les variables d'environnement
+  if (adminUser && adminPass && user === adminUser && password === adminPass) {
+    // Si c'est bon, on renvoie le ADMIN_TOKEN au frontend
+    return res.json({ ok: true, token: process.env.ADMIN_TOKEN });
+  }
+
+  // Sinon, échec
+  return res.status(401).json({ ok: false, error: "Identifiants incorrects." });
+});
+// ======================================
+
+
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true, now: new Date().toISOString() });
+});
 app.get("/api/health", (req, res) => {
   res.json({ ok: true, now: new Date().toISOString() });
 });
