@@ -13,16 +13,7 @@ export default function Page() {
         <div className="grid md:grid-cols-2 gap-8 items-center">
           <div className="space-y-6">
             <span className="badge">FPHM • 50 ans</span>
-            <h1 className="h1">
-              Rejoignez le <span className="text-indigo-600">Pharmathon</span> &
-              la <span className="text-indigo-600">marchathon</span>
-            </h1>
-            <p className="muted text-lg">
-              Course 8&nbsp;km ou marche conviviale 4&nbsp;km — départ depuis la
-              Faculté de Pharmacie de Monastir,{" "}
-              <strong>16 novembre 2025</strong>.
-            </p>
-            <span className="badge">FPHM • 50 ans</span>
+
             <h1 className="h1">
               Rejoignez le <span className="text-indigo-600">Pharmathon</span> &
               la <span className="text-indigo-600">marchathon</span>
