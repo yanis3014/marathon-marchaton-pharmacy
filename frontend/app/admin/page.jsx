@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 export default function Admin() {
   const [token, setToken] = useState("");
-  const [entered, setEntered] = useState(false);
+  // La variable 'entered' n'est plus nécessaire, la présence du token suffit
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [list, setList] = useState([]);
@@ -15,17 +16,49 @@ export default function Admin() {
   const [code, setCode] = useState("");
   const [showScanner, setShowScanner] = useState(false);
 
-  // Récupère le token mémorisé pour éviter de le retaper à chaque refresh
-  useEffect(() => {
-    const saved = localStorage.getItem("adminToken");
-    if (saved) {
-      setToken(saved);
-      setEntered(true);
-      load(saved);
-    }
-  }, []);
+  // --- NOUVELLE GESTION DE SESSION ---
+  const timeoutIdRef = useRef(null);
 
-  // Gère le cycle de vie du scanner
+  const logout = () => {
+    setToken(""); // Vide le token, ce qui déconnecte l'utilisateur
+    setMsg("Session expirée. Veuillez vous reconnecter.");
+  };
+
+  const resetSessionTimeout = () => {
+    // Annule le minuteur précédent
+    if (timeoutIdRef.current) {
+      clearTimeout(timeoutIdRef.current);
+    }
+    // Crée un nouveau minuteur pour déconnecter après le délai
+    timeoutIdRef.current = setTimeout(logout, SESSION_TIMEOUT_MS);
+  };
+
+  useEffect(() => {
+    // Si l'utilisateur est connecté, on écoute son activité pour réinitialiser le minuteur
+    if (token) {
+      // Met en place le minuteur initial
+      resetSessionTimeout();
+
+      // Ajoute des écouteurs d'événements pour l'activité
+      window.addEventListener("mousemove", resetSessionTimeout);
+      window.addEventListener("mousedown", resetSessionTimeout);
+      window.addEventListener("keypress", resetSessionTimeout);
+    }
+
+    // Fonction de nettoyage pour supprimer les écouteurs et le minuteur
+    return () => {
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+      }
+      window.removeEventListener("mousemove", resetSessionTimeout);
+      window.removeEventListener("mousedown", resetSessionTimeout);
+      window.removeEventListener("keypress", resetSessionTimeout);
+    };
+  }, [token]); // Ce hook dépend du token pour s'activer/désactiver
+
+  // --- FIN DE LA GESTION DE SESSION ---
+
+  // Gère le cycle de vie du scanner (inchangé)
   useEffect(() => {
     if (!showScanner) return;
 
@@ -42,30 +75,32 @@ export default function Admin() {
       await doCheckin(decodedText);
     }
 
-    function onScanFailure(error) {
-      // Pas d'action nécessaire en cas d'échec
-    }
+    function onScanFailure(error) {}
 
     scanner.render(onScanSuccess, onScanFailure);
 
     return () => {
       if (scanner) {
-        scanner.clear().catch((error) => {
-          console.error("Failed to clear scanner on cleanup.", error);
-        });
+        scanner.clear().catch(console.error);
       }
     };
   }, [showScanner]);
 
+  // La fonction de connexion est maintenant SIMPLIFIÉE
   async function enter(e) {
     e.preventDefault();
-    if (!token) return;
-    localStorage.setItem("adminToken", token);
-    setEntered(true);
-    await load(token);
+    const form = new FormData(e.currentTarget);
+    const formToken = form.get("token");
+    if (!formToken) return;
+
+    // Pour l'instant on fait confiance au token, mais on pourrait le valider ici
+    setToken(formToken);
+    setMsg("");
+    await load(formToken);
   }
 
   async function load(currentToken = token) {
+    // ... (le reste de la fonction load est inchangé)
     try {
       setLoading(true);
       setMsg("");
@@ -74,18 +109,18 @@ export default function Admin() {
         cache: "no-store",
       });
       if (!res.ok) {
-        setMsg(`Erreur chargement (${res.status})`);
+        if (res.status === 401)
+          logout(); // Si le token est invalide, on déconnecte
+        else setMsg(`Erreur chargement (${res.status})`);
         setList([]);
         return;
       }
       const data = await res.json();
       const items = Array.isArray(data) ? data : data.registrations || [];
-
-      // Normalise pour l’affichage avec les bonnes informations
       const normalized = items.map((r) => ({
         id: r.id,
         fullName: r.fullName,
-        email: r.email, // Email ajouté
+        email: r.email,
         eventChoice: r.eventChoice,
         checkinAt: r.checkinAt,
       }));
@@ -97,7 +132,9 @@ export default function Admin() {
     }
   }
 
+  // La fonction doCheckin est inchangée
   async function doCheckin(scannedCode) {
+    // ... (le code de doCheckin reste le même)
     const codeToValidate = scannedCode || code;
     if (!codeToValidate) return;
     try {
@@ -123,20 +160,21 @@ export default function Admin() {
     }
   }
 
-  if (!entered) {
+  // Si aucun token n'est défini dans l'état, on affiche le formulaire de connexion
+  if (!token) {
     return (
       <main className="section">
         <div className="card max-w-md mx-auto">
           <form onSubmit={enter} className="card-inner grid gap-3">
             <h1 className="h2">Espace Admin</h1>
+            {msg && <p className="text-sm text-red-600">{msg}</p>}
             <p className="muted text-sm">
               Entrez le <code>ADMIN_TOKEN</code> pour accéder aux inscrits.
             </p>
             <input
+              name="token" // Ajout de l'attribut name
               className="input"
               placeholder="ADMIN_TOKEN"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
               required
             />
             <button className="btn btn-primary">Entrer</button>
@@ -146,6 +184,7 @@ export default function Admin() {
     );
   }
 
+  // Sinon, on affiche le tableau de bord admin
   const filtered = list.filter((p) =>
     (p.fullName || "").toLowerCase().includes(search.toLowerCase())
   );
@@ -193,9 +232,7 @@ export default function Admin() {
               📷 Scanner un QR Code
             </button>
           )}
-
           <div className="text-center text-sm text-gray-500">ou</div>
-
           <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">
             <div className="grow">
               <label className="label">
