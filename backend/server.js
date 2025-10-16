@@ -8,7 +8,7 @@ import { Sequelize, DataTypes } from "sequelize";
 import * as dotenv from "dotenv";
 import { Readable } from "stream";
 import { format as csvFormat } from "@fast-csv/format";
-import nodemailer from "nodemailer";
+
 import QRCode from "qrcode";
 import { customAlphabet } from "nanoid";
 import cron from "node-cron";
@@ -130,33 +130,79 @@ const Registration = sequelize.define(
 // ---------------------------
 // SMTP / E-mails
 // ---------------------------
-function createTransport() {
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || "587", 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!host || !user || !pass) return null;
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465, // 465 = SSL
-    auth: { user, pass },
-  });
+// ---------------------------
+// SMTP / E-mails (REMPLACÉ PAR L'API BREVO)
+// ---------------------------
+
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+
+async function sendEmailWithBrevo(
+  toEmail,
+  toName,
+  subject,
+  htmlContent,
+  attachment
+) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
+    console.warn("BREVO_API_KEY not set, skipping email.");
+    return;
+  }
+
+  // L'adresse d'expéditeur doit être validée sur Brevo
+  const fromEmail = (process.env.SMTP_FROM || "").match(/<(.*)>/)?.[1];
+  const fromName = (process.env.SMTP_FROM || "").replace(/<.*>/, "").trim();
+
+  if (!fromEmail) {
+    console.error(
+      "SMTP_FROM format is invalid. Should be 'Name <email@example.com>'"
+    );
+    return;
+  }
+
+  const payload = {
+    sender: { name: fromName, email: fromEmail },
+    to: [{ email: toEmail, name: toName }],
+    subject,
+    htmlContent,
+  };
+
+  if (attachment) {
+    payload.attachment = [
+      {
+        // Le QR code est un Buffer, il faut le convertir en Base64 pour l'API JSON
+        content: attachment.content.toString("base64"),
+        name: attachment.filename,
+      },
+    ];
+  }
+
+  try {
+    const response = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        "api-key": apiKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(
+        `Brevo API Error (${response.status}): ${JSON.stringify(errorBody)}`
+      );
+    }
+    console.log(`Email sent successfully to ${toEmail} via Brevo API.`);
+  } catch (error) {
+    console.error("Failed to send email with Brevo:", error);
+  }
 }
 
 const nano = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 10);
 
 async function sendConfirmationEmail(reg) {
-  const transporter = createTransport();
-  if (!transporter) {
-    console.warn("No SMTP configured, skipping confirmation email.");
-    return;
-  }
-  const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3001";
-  const confirmLink = `${baseUrl}/api/confirm?token=${encodeURIComponent(
-    reg.confirmToken
-  )}`;
-
   // Génère l'image PNG du QR (checkinCode)
   const qrPng = await QRCode.toBuffer(reg.checkinCode, {
     type: "png",
@@ -174,41 +220,38 @@ async function sendConfirmationEmail(reg) {
       <li><strong>Date :</strong> 16 novembre 2025</li>
       <li><strong>Départ :</strong> FPHM</li>
     </ul>
-    <p>Veuillez confirmer votre adresse e-mail en cliquant ici : <a href="${confirmLink}">Confirmer mon e-mail</a>.</p>
     <p>Votre code de présence (QR) est joint. Présentez-le le jour J au pointage.</p>
     <p>À bientôt !</p>
   </div>`;
 
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM || "Pharmathon FPHM <no-reply@example.local>",
-    to: reg.email,
-    subject: "Confirmation d'inscription — Pharmathon & marchathon (FPHM)",
+  // NOUVEL APPEL
+  await sendEmailWithBrevo(
+    reg.email,
+    reg.fullName,
+    "Confirmation d'inscription — Pharmathon & marchathon (FPHM)",
     html,
-    attachments: [{ filename: "qr-checkin.png", content: qrPng }],
-  });
+    { filename: "qr-checkin.png", content: qrPng }
+  );
 }
 
 async function sendReminderEmail(reg, daysLeft) {
-  const transporter = createTransport();
-  if (!transporter) {
-    console.warn("No SMTP configured, skipping reminder emails.");
-    return;
-  }
   const html = `
-  <div style="font-family:Arial,sans-serif">
-    <h2>Pharmathon & marchathon — Rappel (J-${daysLeft})</h2>
-    <p>Bonjour ${reg.fullName},</p>
-    <p>L'événement approche ! Nous vous attendons le <strong>16 novembre 2025</strong> à la <em>Faculté de Pharmacie de Monastir</em>.</p>
-    <p>Épreuve : <strong>${reg.eventChoice}</strong></p>
-    <p>Merci d'apporter votre QR code de pointage reçu par email lors de votre inscription.</p>
-    <p>À très vite !</p>
-  </div>`;
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM || "Pharmathon FPHM <no-reply@example.local>",
-    to: reg.email,
-    subject: `Rappel — Pharmathon & marchathon (J-${daysLeft})`,
-    html,
-  });
+    <div style="font-family:Arial,sans-serif">
+      <h2>Pharmathon & marchathon — Rappel (J-${daysLeft})</h2>
+      <p>Bonjour ${reg.fullName},</p>
+      <p>L'événement approche ! Nous vous attendons le <strong>16 novembre 2025</strong> à la <em>Faculté de Pharmacie de Monastir</em>.</p>
+      <p>Épreuve : <strong>${reg.eventChoice}</strong></p>
+      <p>Merci d'apporter votre QR code de pointage reçu par email lors de votre inscription.</p>
+      <p>À très vite !</p>
+    </div>`;
+
+  // NOUVEL APPEL
+  await sendEmailWithBrevo(
+    reg.email,
+    reg.fullName,
+    `Rappel — Pharmathon & marchathon (J-${daysLeft})`,
+    html
+  );
 }
 
 // ---------------------------
