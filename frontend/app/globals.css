@@ -97,3 +97,20 @@ body {
 .table td {
   @apply px-3 py-2 border-b text-left text-sm;
 }
+/* Styles pour le scanner QR */
+#qr-reader {
+  max-width: 500px;
+  margin: 0 auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+#qr-reader video {
+  width: 100% !important;
+  height: auto !important;
+}
+
+#qr-reader__scan_region {
+  border-radius: 1rem;
+}

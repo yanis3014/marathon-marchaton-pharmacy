@@ -1,15 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
 
-/**
- * Page Admin :
- * - Demande le ADMIN_TOKEN
- * - Liste les inscriptions via GET /api/registrations (header x-admin-token)
- * - Valide les présences via POST /api/admin/checkin (body { code }, header x-admin-token)
- */
 export default function Admin() {
   const [token, setToken] = useState("");
   const [entered, setEntered] = useState(false);
@@ -18,6 +13,7 @@ export default function Admin() {
   const [list, setList] = useState([]);
   const [search, setSearch] = useState("");
   const [code, setCode] = useState("");
+  const [showScanner, setShowScanner] = useState(false);
 
   // Récupère le token mémorisé pour éviter de le retaper à chaque refresh
   useEffect(() => {
@@ -28,6 +24,38 @@ export default function Admin() {
       load(saved);
     }
   }, []);
+
+  // Gère le cycle de vie du scanner
+  useEffect(() => {
+    if (!showScanner) return;
+
+    const scanner = new Html5QrcodeScanner(
+      "qr-reader",
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      false
+    );
+
+    async function onScanSuccess(decodedText, decodedResult) {
+      setCode(decodedText);
+      await scanner.clear();
+      setShowScanner(false);
+      await doCheckin(decodedText);
+    }
+
+    function onScanFailure(error) {
+      // Pas d'action nécessaire en cas d'échec
+    }
+
+    scanner.render(onScanSuccess, onScanFailure);
+
+    return () => {
+      if (scanner) {
+        scanner.clear().catch((error) => {
+          console.error("Failed to clear scanner on cleanup.", error);
+        });
+      }
+    };
+  }, [showScanner]);
 
   async function enter(e) {
     e.preventDefault();
@@ -51,20 +79,15 @@ export default function Admin() {
         return;
       }
       const data = await res.json();
-      // Le backend peut renvoyer { ok:true, registrations: [...] } ou directement un tableau
       const items = Array.isArray(data) ? data : data.registrations || [];
-      // Normalise pour l’affichage
+
+      // Normalise pour l’affichage avec les bonnes informations
       const normalized = items.map((r) => ({
-        id: r.id, // <--- Numéro d'inscription
+        id: r.id,
         fullName: r.fullName,
-        email: r.email,
-        phone: r.phone, // <--- Ajout
-        dob: r.dob, // <--- Ajout
-        sex: r.sex, // <--- Ajout
-        affiliation: r.affiliation, // <--- Ajout
+        email: r.email, // Email ajouté
         eventChoice: r.eventChoice,
         checkinAt: r.checkinAt,
-        confirmed: r.confirmed, // <--- Ajout
       }));
       setList(normalized);
     } catch (e) {
@@ -74,8 +97,9 @@ export default function Admin() {
     }
   }
 
-  async function doCheckin() {
-    if (!code) return;
+  async function doCheckin(scannedCode) {
+    const codeToValidate = scannedCode || code;
+    if (!codeToValidate) return;
     try {
       setMsg("");
       const res = await fetch(`${API}/api/admin/checkin`, {
@@ -84,7 +108,7 @@ export default function Admin() {
           "Content-Type": "application/json",
           "x-admin-token": token,
         },
-        body: JSON.stringify({ code: code.trim() }),
+        body: JSON.stringify({ code: codeToValidate.trim() }),
       });
       const data = await res.json();
       if (res.ok && data.ok !== false) {
@@ -149,23 +173,45 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Bloc check-in manuel (tu peux aussi scanner un QR et coller son code ici) */}
       <div className="card">
-        <div className="card-inner flex flex-col md:flex-row gap-3 items-start md:items-end">
-          <div className="grow">
-            <label className="label">
-              Valider une présence (code / QR décodé)
-            </label>
-            <input
-              className="input"
-              placeholder="Coller le code du QR ici…"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
+        <div className="card-inner space-y-4">
+          {showScanner ? (
+            <div className="space-y-3">
+              <div id="qr-reader" />
+              <button
+                className="btn btn-ghost w-full"
+                onClick={() => setShowScanner(false)}
+              >
+                Arrêter le scan
+              </button>
+            </div>
+          ) : (
+            <button
+              className="btn btn-outline w-full"
+              onClick={() => setShowScanner(true)}
+            >
+              📷 Scanner un QR Code
+            </button>
+          )}
+
+          <div className="text-center text-sm text-gray-500">ou</div>
+
+          <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">
+            <div className="grow">
+              <label className="label">
+                Valider manuellement (code / QR décodé)
+              </label>
+              <input
+                className="input"
+                placeholder="Coller le code du QR ici…"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+              />
+            </div>
+            <button className="btn btn-primary" onClick={() => doCheckin()}>
+              Valider
+            </button>
           </div>
-          <button className="btn btn-primary" onClick={doCheckin}>
-            Valider
-          </button>
         </div>
       </div>
 
@@ -173,33 +219,27 @@ export default function Admin() {
         <table className="table">
           <thead>
             <tr>
-              <th># Dossard</th> {/* <--- Modifié */}
+              <th># Dossard</th>
               <th>Nom</th>
+              <th>Email</th>
               <th>Épreuve</th>
-              <th>Téléphone</th> {/* <--- Ajout */}
-              <th>Affiliation</th> {/* <--- Ajout */}
               <th>Présence</th>
-              <th>Confirmé</th> {/* <--- Ajout */}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan="7" className="text-center text-gray-500 py-4">
-                  {" "}
-                  {/* <--- colSpan à 7 */}
+                <td colSpan="5" className="text-center text-gray-500 py-4">
                   Aucun inscrit
                 </td>
               </tr>
             ) : (
               filtered.map((p) => (
                 <tr key={p.id} className="hover:bg-lime-50">
-                  <td className="font-mono">{p.id}</td>{" "}
-                  {/* <--- Numéro de dossard */}
+                  <td className="font-mono">{p.id}</td>
                   <td>{p.fullName}</td>
+                  <td>{p.email}</td>
                   <td>{p.eventChoice}</td>
-                  <td>{p.phone}</td> {/* <--- Ajout */}
-                  <td>{p.affiliation}</td> {/* <--- Ajout */}
                   <td>
                     {p.checkinAt ? (
                       <span className="text-lime-600 font-semibold">
@@ -207,15 +247,6 @@ export default function Admin() {
                       </span>
                     ) : (
                       <span className="text-gray-400">Absent</span>
-                    )}
-                  </td>
-                  <td>
-                    {" "}
-                    {/* <--- Ajout */}
-                    {p.confirmed ? (
-                      <span className="text-lime-600">Oui</span>
-                    ) : (
-                      <span className="text-red-500">Non</span>
                     )}
                   </td>
                 </tr>
