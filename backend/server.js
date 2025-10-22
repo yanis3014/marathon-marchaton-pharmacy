@@ -218,8 +218,8 @@ async function sendConfirmationEmail(reg) {
   <ul>
     <li><strong>Épreuve :</strong> ${reg.eventChoice}</li>
     <li><strong>Date :</strong> 16 novembre 2025</li>
-    <li><strong>Heure de départ :</strong> 10h00</li> {/* Ligne ajoutée */}
-    <li><strong>Lieu de départ :</strong> FPHM</li> {/* "Départ" changé en "Lieu de départ" pour plus de clarté */}
+    <li><strong>Heure de départ :</strong> 10h00</li> 
+    <li><strong>Lieu de départ :</strong> FPHM</li>
   </ul>
   <p>Votre code de présence (QR) est joint. Présentez-le le jour J au pointage.</p>
   <p>À bientôt !</p>
@@ -300,11 +300,20 @@ function parseBody(req) {
 // Middlewares / helpers admin
 // ---------------------------
 function requireAdmin(req, res, next) {
-  const token = req.header("x-admin-token");
-  if (!token || token !== (process.env.ADMIN_TOKEN || "")) {
-    return res.status(401).json({ ok: false, error: "Non autorisé." });
+  const headerToken = req.header("x-admin-token");
+  const queryToken = req.query.token; // Vérifie aussi le paramètre d'URL 'token'
+  const expectedToken = process.env.ADMIN_TOKEN || "";
+
+  // Autorise si le token est dans le header OU dans l'URL (pour l'export)
+  if (
+    expectedToken &&
+    (headerToken === expectedToken || queryToken === expectedToken)
+  ) {
+    return next(); // Autorisé
   }
-  next();
+
+  // Non autorisé si aucun token valide n'est trouvé
+  return res.status(401).json({ ok: false, error: "Non autorisé." });
 }
 
 // ---------------------------
@@ -491,12 +500,44 @@ app.post("/api/checkin/:code", requireAdmin, async (req, res) => {
 
 // Export CSV (admin)
 app.get("/api/export/csv", requireAdmin, async (req, res) => {
-  const rows = await Registration.findAll({ order: [["createdAt", "DESC"]] });
-  res.setHeader("Content-Type", "text/csv; charset=utf-8");
-  res.setHeader("Content-Disposition", "attachment; filename=inscriptions.csv");
-  const stream = Readable.from(rows.map((r) => r.toJSON()));
-  const csvStream = csvFormat({ headers: true });
-  stream.pipe(csvStream).pipe(res);
+  // Récupère le filtre d'affiliation depuis les paramètres de l'URL (?affiliation=...)
+  const { affiliation } = req.query;
+
+  // Construit la clause 'where' pour Sequelize
+  const whereClause = {};
+  if (affiliation && affiliation !== "Tous") {
+    // Ignore si 'Tous' est sélectionné ou si rien n'est fourni
+    // Ajoute la condition de filtrage si une affiliation spécifique est demandée
+    whereClause.affiliation = affiliation;
+  }
+
+  try {
+    // Récupère les inscriptions en appliquant le filtre (s'il existe)
+    const rows = await Registration.findAll({
+      where: whereClause, // Applique la clause where ici
+      order: [["createdAt", "DESC"]],
+    });
+
+    // Définit le nom du fichier dynamiquement
+    const filename =
+      affiliation && affiliation !== "Tous"
+        ? `inscriptions-${affiliation
+            .toLowerCase()
+            .replace(/[^a-z0-9]/gi, "_")}.csv`
+        : "inscriptions-tous.csv";
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    // Utilise le nom de fichier dynamique
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+
+    // Crée le flux CSV (pas de changement ici)
+    const stream = Readable.from(rows.map((r) => r.toJSON()));
+    const csvStream = csvFormat({ headers: true });
+    stream.pipe(csvStream).pipe(res);
+  } catch (error) {
+    console.error("Erreur lors de l'export CSV:", error);
+    res.status(500).send("Erreur lors de la génération du fichier CSV.");
+  }
 });
 
 // ---------------------------

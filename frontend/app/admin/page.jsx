@@ -16,6 +16,19 @@ export default function Admin() {
   const [showScanner, setShowScanner] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState(null);
+  const [exportAffiliation, setExportAffiliation] = useState("Tous");
+
+  // tous les types d'affiliation
+  const affiliations = [
+    "Tous", // Option pour tout exporter
+    "Étudiant(e)",
+    "Enseignant(e)",
+    "Pharmacien(ne)",
+    "Personnel",
+    "Technicien(ne)",
+    "Ancien(ne) diplômé(e)",
+    "Famille / accompagnant",
+  ];
 
   // --- GESTION DE LA SESSION AVEC TIMEOUT ---
   const timeoutIdRef = useRef(null);
@@ -206,6 +219,45 @@ export default function Admin() {
             {msg}
           </div>
         )}
+        <div className="card">
+          <div className="card-inner flex flex-col md:flex-row items-center gap-4">
+            <h3 className="h2 text-xl mb-2 md:mb-0 whitespace-nowrap">
+              Exporter (CSV)
+            </h3>
+            <div className="flex items-center gap-3 grow w-full md:w-auto">
+              <label
+                htmlFor="exportAffiliation"
+                className="text-sm font-medium text-gray-700 whitespace-nowrap"
+              >
+                Filtrer :
+              </label>
+              <select
+                id="exportAffiliation"
+                className="input grow" // grow pour prendre l'espace disponible
+                value={exportAffiliation}
+                onChange={(e) => setExportAffiliation(e.target.value)}
+              >
+                {affiliations.map((aff) => (
+                  <option key={aff} value={aff}>
+                    {aff}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* MODIFIÉ : Le lien inclut maintenant le token et l'affiliation */}
+            <a
+              href={`${API}/api/export/csv?token=${encodeURIComponent(
+                token
+              )}&affiliation=${encodeURIComponent(exportAffiliation)}`}
+              className="btn btn-outline whitespace-nowrap w-full md:w-auto" // w-full sur mobile
+              target="_blank"
+              rel="noopener noreferrer"
+              download // Suggère le téléchargement
+            >
+              Télécharger CSV
+            </a>
+          </div>
+        </div>
         <div className="card">
           <div className="card-inner space-y-4">
             {showScanner ? (

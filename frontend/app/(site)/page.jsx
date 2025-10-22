@@ -89,24 +89,24 @@ export default function Page() {
         <div className="flex justify-center items-center gap-8 md:gap-16 flex-wrap">
           {/* Remplace les src par les chemins réels vers tes logos */}
           <img
-            src="/sponsors/sponsor1.png"
+            src="/sponsors/sponsor1.jpg"
             alt="Sponsor 1"
-            className="h-16 max-w-[150px] object-contain"
+            className="h-24 max-w-[200px] object-contain"
           />
           <img
             src="/sponsors/sponsor2.jpg"
             alt="Sponsor 2"
-            className="h-16 max-w-[150px] object-contain"
+            className="h-24 max-w-[200px] object-contain"
           />
           <img
             src="/sponsors/sponsor3.jpg"
             alt="Sponsor 3"
-            className="h-16 max-w-[150px] object-contain"
+            className="h-24 max-w-[200px] object-contain"
           />
           <img
             src="/sponsors/sponsor4.png"
             alt="Sponsor 1"
-            className="h-16 max-w-[150px] object-contain"
+            className="h-24 max-w-[200px] object-contain"
           />
         </div>
       </section>
