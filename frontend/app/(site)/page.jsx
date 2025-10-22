@@ -19,9 +19,9 @@ export default function Page() {
               le <span className="text-indigo-600">marchathon</span>
             </h1>
             <p className="muted text-lg">
-              Course 8&nbsp;km ou marche conviviale 4&nbsp;km — départ depuis la
-              Faculté de Pharmacie de Monastir,{" "}
-              <strong>16 novembre 2025</strong>.
+              Course 8&nbsp;km ou marche conviviale 4&nbsp;km — départ à{" "}
+              <strong>10h00</strong> depuis la Faculté de Pharmacie de Monastir,{" "}
+              <strong>16 novembre 2025 . 10h00 </strong>.
             </p>
 
             {/* ==== AJOUTEZ CE BLOC ==== */}
@@ -82,6 +82,32 @@ export default function Page() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+      <section className="section text-center">
+        <h2 className="h2 mb-8">Nos Sponsors</h2>
+        <div className="flex justify-center items-center gap-8 md:gap-16 flex-wrap">
+          {/* Remplace les src par les chemins réels vers tes logos */}
+          <img
+            src="/images/sponsors/sponsor1.jpg"
+            alt="Sponsor 1"
+            className="h-16 max-w-[150px] object-contain"
+          />
+          <img
+            src="/images/sponsors/sponsor2.jpg"
+            alt="Sponsor 2"
+            className="h-16 max-w-[150px] object-contain"
+          />
+          <img
+            src="/images/sponsors/sponsor3.jpg"
+            alt="Sponsor 3"
+            className="h-16 max-w-[150px] object-contain"
+          />
+          <img
+            src="/images/sponsors/sponsor4.png"
+            alt="Sponsor 1"
+            className="h-16 max-w-[150px] object-contain"
+          />
         </div>
       </section>
 

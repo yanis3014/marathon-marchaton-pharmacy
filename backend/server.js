@@ -211,18 +211,19 @@ async function sendConfirmationEmail(reg) {
   });
 
   const html = `
-  <div style="font-family:Arial,sans-serif">
-    <h2>Pharmathon & marchathon — Confirmation d'inscription</h2>
-    <p>Bonjour ${reg.fullName},</p>
-    <p>Merci pour votre inscription à l'événement de la Faculté de Pharmacie de Monastir.</p>
-    <ul>
-      <li><strong>Épreuve :</strong> ${reg.eventChoice}</li>
-      <li><strong>Date :</strong> 16 novembre 2025</li>
-      <li><strong>Départ :</strong> FPHM</li>
-    </ul>
-    <p>Votre code de présence (QR) est joint. Présentez-le le jour J au pointage.</p>
-    <p>À bientôt !</p>
-  </div>`;
+<div style="font-family:Arial,sans-serif">
+  <h2>Pharmathon & marchathon — Confirmation d'inscription</h2>
+  <p>Bonjour ${reg.fullName},</p>
+  <p>Merci pour votre inscription à l'événement de la Faculté de Pharmacie de Monastir.</p>
+  <ul>
+    <li><strong>Épreuve :</strong> ${reg.eventChoice}</li>
+    <li><strong>Date :</strong> 16 novembre 2025</li>
+    <li><strong>Heure de départ :</strong> 10h00</li> {/* Ligne ajoutée */}
+    <li><strong>Lieu de départ :</strong> FPHM</li> {/* "Départ" changé en "Lieu de départ" pour plus de clarté */}
+  </ul>
+  <p>Votre code de présence (QR) est joint. Présentez-le le jour J au pointage.</p>
+  <p>À bientôt !</p>
+</div>`;
 
   // NOUVEL APPEL
   await sendEmailWithBrevo(
@@ -389,7 +390,6 @@ app.post("/api/admin/login", (req, res) => {
   return res.status(401).json({ ok: false, error: "Identifiants incorrects." });
 });
 // ======================================
-
 
 app.get("/api/health", (req, res) => {
   res.json({ ok: true, now: new Date().toISOString() });
