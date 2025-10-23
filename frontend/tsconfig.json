@@ -1,34 +1,50 @@
 {
   "compilerOptions": {
+    // --- Configuration des Alias ---
+    "baseUrl": ".", // Indique que la racine pour les alias est le dossier courant (frontend/)
+    "paths": {
+      "@/*": [
+        "*"
+      ] // Définit que @/quelquechose correspond à ./quelquechose
+    },
+    // --- Fin Configuration des Alias ---
+    // --- Autres options (conservées ou ajoutées pour compatibilité) ---
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
     ],
-    "allowJs": true,
+    "allowJs": true, // Important car ton projet utilise JS/JSX
     "skipLibCheck": true,
     "strict": false,
     "noEmit": true,
-    "incremental": true,
-    "module": "esnext",
     "esModuleInterop": true,
-    "moduleResolution": "node",
+    "module": "esnext",
+    "moduleResolution": "bundler", // Préféré pour les versions récentes de Next/TS
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    "incremental": true,
     "plugins": [
       {
         "name": "next"
       }
-    ]
+    ],
+    // Assure-toi que "noImplicitAny" n'est pas à true si tu ne veux pas de vérification de type stricte sur JS
+    "noImplicitAny": false // Ajouté pour plus de souplesse avec JS/JSX
   },
   "include": [
     "next-env.d.ts",
-    ".next/types/**/*.ts",
-    "**/*.ts",
-    "**/*.tsx"
+    // ".next/types/**/*.ts", // Optionnel, peut être commenté si cause des soucis
+    "**/*.js", // Ajouté pour inclure les fichiers JavaScript
+    "**/*.jsx", // Ajouté pour inclure les fichiers JSX
+    "**/*.ts", // Garder si tu as des fichiers TS
+    "**/*.tsx" // Garder si tu as des fichiers TSX
+    ,
+    ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
-  ]
+    "node_modules",
+    ".next"
+  ] // Ajouté .next ici aussi par sécurité
 }
