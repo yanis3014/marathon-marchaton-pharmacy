@@ -23,7 +23,7 @@ export default function Navbar() {
           <img
             src="/logo.jpg"
             alt="FPHM"
-            className="w-9 h-9 rounded-xl shadow-sm"
+            className="w-14 h-14 rounded-xl shadow-sm"
           />
           <div className="font-semibold">Pharmathon • Marchathon</div>
         </Link>

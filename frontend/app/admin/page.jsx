@@ -377,6 +377,22 @@ export default function Admin() {
               <p>
                 <strong>Statut :</strong> {selectedParticipant.affiliation}
               </p>
+              {selectedParticipant.affiliation === "Étudiant(e)" && (
+                <>
+                  <p>
+                    <strong>Origine Étudiant :</strong>{" "}
+                    {selectedParticipant.studentOrigin || "Non précisé"}
+                  </p>
+                  {/* Affiche l'établissement seulement si 'Autre' est sélectionné ET renseigné */}
+                  {selectedParticipant.studentOrigin === "Autre" &&
+                    selectedParticipant.studentOriginOther && (
+                      <p>
+                        <strong>Autre Établissement :</strong>{" "}
+                        {selectedParticipant.studentOriginOther}
+                      </p>
+                    )}
+                </>
+              )}
             </div>
             <button
               className="btn btn-primary mt-6 w-full"

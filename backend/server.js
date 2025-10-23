@@ -114,6 +114,14 @@ const Registration = sequelize.define(
       type: DataTypes.ENUM("Pharmathon (8 km)", "marchathon (4 km)"),
       allowNull: false,
     },
+    studentOrigin: {
+      type: DataTypes.ENUM("FPHM", "Autre"),
+      allowNull: true, // N'est requis que si affiliation est 'Étudiant(e)'
+    },
+    studentOriginOther: {
+      type: DataTypes.STRING,
+      allowNull: true, // N'est requis que si studentOrigin est 'Autre'
+    },
     confirmed: { type: DataTypes.BOOLEAN, defaultValue: false },
     confirmToken: { type: DataTypes.STRING },
     checkinCode: { type: DataTypes.STRING },
@@ -263,8 +271,17 @@ function isValidPhone(str) {
 }
 
 function parseBody(req) {
-  const { fullName, dob, sex, phone, email, affiliation, eventChoice } =
-    req.body || {};
+  const {
+    fullName,
+    dob,
+    sex,
+    phone,
+    email,
+    affiliation,
+    eventChoice,
+    studentOrigin,
+    studentOriginOther,
+  } = req.body || {};
   const errors = [];
 
   if (!fullName || fullName.trim().length < 2)
@@ -286,12 +303,32 @@ function parseBody(req) {
   ];
   if (!affiliations.includes(affiliation))
     errors.push("Lien avec la FPHM invalide.");
+  if (affiliation === "Étudiant(e)") {
+    if (!["FPHM", "Autre"].includes(studentOrigin)) {
+      errors.push("Veuillez préciser l'origine de l'étudiant (FPHM ou Autre).");
+    } else if (
+      studentOrigin === "Autre" &&
+      (!studentOriginOther || studentOriginOther.trim().length < 2)
+    ) {
+      errors.push("Veuillez préciser le nom de l'autre établissement.");
+    }
+  }
   const choices = ["Pharmathon (8 km)", "marchathon (4 km)"];
   if (!choices.includes(eventChoice))
     errors.push("Choix de l’épreuve invalide.");
 
   return {
-    data: { fullName, dob, sex, phone, email, affiliation, eventChoice },
+    data: {
+      fullName,
+      dob,
+      sex,
+      phone,
+      email,
+      affiliation,
+      eventChoice,
+      studentOrigin,
+      studentOriginOther,
+    },
     errors,
   };
 }

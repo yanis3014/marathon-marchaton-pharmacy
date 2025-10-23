@@ -21,7 +21,7 @@ export default function Page() {
             <p className="muted text-lg">
               Course 8&nbsp;km ou marche conviviale 4&nbsp;km — départ à{" "}
               <strong>10h00</strong> depuis la Faculté de Pharmacie de Monastir,{" "}
-              <strong>16 novembre 2025 . 10h00 </strong>.
+              <strong>16 novembre 2025 </strong>.
             </p>
 
             {/* ==== AJOUTEZ CE BLOC ==== */}
@@ -85,28 +85,28 @@ export default function Page() {
         </div>
       </section>
       <section className="section text-center">
-        <h2 className="h2 mb-8">Nos Sponsors</h2>
-        <div className="flex justify-center items-center gap-8 md:gap-16 flex-wrap">
+        <h2 className="h2 mb-12">Nos Sponsors</h2>
+        <div className="grid grid-cols-2 gap-6 place-items-center md:flex md:flex-wrap md:justify-center md:items-center md:gap-10">
           {/* Remplace les src par les chemins réels vers tes logos */}
           <img
             src="/sponsors/sponsor1.jpg"
             alt="Sponsor 1"
-            className="h-24 max-w-[200px] object-contain"
+            className="bg-white p-4 rounded-xl shadow-md flex justify-center items-center w-56 h-40 transition hover:shadow-lg "
           />
           <img
             src="/sponsors/sponsor2.jpg"
             alt="Sponsor 2"
-            className="h-24 max-w-[200px] object-contain"
+            className="bg-white p-4 rounded-xl shadow-md flex justify-center items-center w-56 h-40 transition hover:shadow-lg "
           />
           <img
             src="/sponsors/sponsor3.jpg"
             alt="Sponsor 3"
-            className="h-24 max-w-[200px] object-contain"
+            className="bg-white p-4 rounded-xl shadow-md flex justify-center items-center w-56 h-40 transition hover:shadow-lg "
           />
           <img
             src="/sponsors/sponsor4.png"
             alt="Sponsor 1"
-            className="h-24 max-w-[200px] object-contain"
+            className="bg-white p-4 rounded-xl shadow-md flex justify-center items-center w-56 h-40 transition hover:shadow-lg "
           />
         </div>
       </section>
@@ -114,7 +114,7 @@ export default function Page() {
       <section id="infos" className="section grid md:grid-cols-3 gap-4">
         {[
           { title: "Lieu de départ", text: "Faculté de Pharmacie de Monastir" },
-          { title: "Date", text: "Dimanche 16 novembre 2025" },
+          { title: "Date", text: "Dimanche 16 novembre 2025 - 10h00" },
           { title: "Épreuves", text: "Course 8 km • Marche conviviale 4 km" },
         ].map((b, i) => (
           <div key={i} className="card">

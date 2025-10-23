@@ -8,6 +8,8 @@ export default function Inscription() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState([]);
+  const [selectedAffiliation, setSelectedAffiliation] = useState("");
+  const [studentOriginChoice, setStudentOriginChoice] = useState("");
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -85,7 +87,14 @@ export default function Inscription() {
 
             <div>
               <label className="label">Lien avec la FPHM</label>
-              <select className="input" name="affiliation" required>
+              <select
+                className="input"
+                name="affiliation"
+                required
+                value={selectedAffiliation}
+                onChange={(e) => setSelectedAffiliation(e.target.value)}
+              >
+                <option value="">-- Sélectionnez --</option>
                 <option>Étudiant(e)</option>
                 <option>Enseignant(e)</option>
                 <option>Pharmacien(ne)</option>
@@ -95,6 +104,52 @@ export default function Inscription() {
                 <option>Famille / accompagnant</option>
               </select>
             </div>
+            {selectedAffiliation === "Étudiant(e)" && (
+              <div className="grid md:grid-cols-2 gap-4 p-4 border rounded-xl bg-gray-50/50 mt-2">
+                <div>
+                  <label className="label">Vous êtes étudiant(e) à :</label>
+                  <div className="flex flex-col gap-2 mt-1">
+                    {/* Radio FPHM */}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="studentOrigin"
+                        value="FPHM"
+                        required={selectedAffiliation === "Étudiant(e)"} // Requis seulement si étudiant
+                        checked={studentOriginChoice === "FPHM"}
+                        onChange={(e) => setStudentOriginChoice(e.target.value)}
+                      />
+                      <span>La Faculté de Pharmacie de Monastir (FPHM)</span>
+                    </label>
+                    {/* Radio Autre */}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="studentOrigin"
+                        value="Autre"
+                        required={selectedAffiliation === "Étudiant(e)"} // Requis seulement si étudiant
+                        checked={studentOriginChoice === "Autre"}
+                        onChange={(e) => setStudentOriginChoice(e.target.value)}
+                      />
+                      <span>Un autre établissement</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Champ texte qui apparaît si "Autre" est coché */}
+                {studentOriginChoice === "Autre" && (
+                  <div>
+                    <label className="label">Précisez l'établissement :</label>
+                    <input
+                      className="input mt-1"
+                      name="studentOriginOther"
+                      required={studentOriginChoice === "Autre"} // Requis seulement si Autre est coché
+                      placeholder="Nom de votre établissement"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div>
               <label className="label">Choix de l’épreuve</label>
