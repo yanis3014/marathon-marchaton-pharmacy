@@ -50,7 +50,7 @@ app.use(
   })
 );
 // OPTIONS préflight
-app.options("*", cors());
+//app.options("*", cors());
 
 // ---------------------------
 // Sécurité & limites
