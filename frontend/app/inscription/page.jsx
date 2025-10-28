@@ -44,6 +44,13 @@ export default function Inscription() {
               avec QR vous sera envoyé.
             </p>
 
+            {/* ==== BLOC DATE LIMITE AJOUTÉ ==== */}
+            <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+              <strong>Attention :</strong> Les inscriptions en ligne se
+              terminent le <strong>9 novembre 2025 à 23h59</strong>.
+            </p>
+            {/* ================================ */}
+
             {errors.length > 0 && (
               <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-800">
                 {errors.map((e, i) => (

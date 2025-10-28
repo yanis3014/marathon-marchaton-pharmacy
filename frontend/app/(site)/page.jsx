@@ -24,7 +24,6 @@ export default function Page() {
               <strong>16 novembre 2025 </strong>.
             </p>
 
-            {/* ==== AJOUTEZ CE BLOC ==== */}
             <p className="muted text-lg pt-2 border-t border-gray-200">
               Célébrons ensemble 50 ans d’excellence et de passion à la FPHM à
               travers le Pharmathon & le Marchathon !<br />
@@ -37,7 +36,14 @@ export default function Page() {
                 d’esprit FPHM !
               </strong>
             </p>
-            {/* ======================= */}
+
+            {/* ==== BLOC DATE LIMITE AJOUTÉ ==== */}
+            <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+              <strong>Attention :</strong> Les inscriptions en ligne se
+              terminent le <strong>9 novembre 2025 à 23h59</strong>.
+            </p>
+            {/* ================================ */}
+
             <div className="flex gap-3">
               <Link href="/inscription" className="btn btn-primary">
                 S'inscrire maintenant
