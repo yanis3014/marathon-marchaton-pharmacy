@@ -110,13 +110,13 @@ export default function Page() {
             className="bg-white p-4 rounded-xl shadow-md flex justify-center items-center w-56 h-40 transition hover:shadow-lg "
           />
           <img
-            src="/sponsors/sponsor4.png"
-            alt="Sponsor 4"
+            src="/sponsors/sponsor5.jpg"
+            alt="Sponsor 5"
             className="bg-white p-4 rounded-xl shadow-md flex justify-center items-center w-56 h-40 transition hover:shadow-lg "
           />
           <img
-            src="/sponsors/sponsor5.jpg"
-            alt="Sponsor 5"
+            src="/sponsors/sponsor4.png"
+            alt="Sponsor 4"
             className="bg-white p-4 rounded-xl shadow-md flex justify-center items-center w-56 h-40 transition hover:shadow-lg "
           />
         </div>
