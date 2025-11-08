@@ -125,7 +125,7 @@ export default function Page() {
             className="bg-white p-4 rounded-xl shadow-md flex justify-center items-center w-56 h-40 transition hover:shadow-lg "
           />
           <img
-            src="/sponsors/sponsor7.jpg"
+            src="/sponsors/sponsor7.png"
             alt="Sponsor 7"
             className="bg-white p-4 rounded-xl shadow-md flex justify-center items-center w-56 h-40 transition hover:shadow-lg "
           />
