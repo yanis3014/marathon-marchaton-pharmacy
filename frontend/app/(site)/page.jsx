@@ -119,6 +119,16 @@ export default function Page() {
             alt="Sponsor 4"
             className="bg-white p-4 rounded-xl shadow-md flex justify-center items-center w-56 h-40 transition hover:shadow-lg "
           />
+          <img
+            src="/sponsors/sponsor6.jpg"
+            alt="Sponsor 6"
+            className="bg-white p-4 rounded-xl shadow-md flex justify-center items-center w-56 h-40 transition hover:shadow-lg "
+          />
+          <img
+            src="/sponsors/sponsor7.jpg"
+            alt="Sponsor 7"
+            className="bg-white p-4 rounded-xl shadow-md flex justify-center items-center w-56 h-40 transition hover:shadow-lg "
+          />
         </div>
       </section>
 
