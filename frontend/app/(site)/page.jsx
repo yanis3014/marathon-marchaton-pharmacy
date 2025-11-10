@@ -40,7 +40,7 @@ export default function Page() {
             {/* ==== BLOC DATE LIMITE AJOUTÉ ==== */}
             <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
               <strong>Attention :</strong> Les inscriptions en ligne se
-              terminent le <strong>9 novembre 2025 à 23h59</strong>.
+              terminent le <strong>12 novembre 2025 à 23h59</strong>.
             </p>
             {/* ================================ */}
 
