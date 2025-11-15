@@ -97,6 +97,37 @@ body {
 .table td {
   @apply px-3 py-2 border-b text-left text-sm;
 }
+/* Toast messages en haut de l'écran */
+.toast-fixed {
+  position: fixed;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 28rem;
+  padding: 0 1rem;
+  z-index: 50;
+}
+
+.toast-inner {
+  @apply rounded-2xl px-4 py-3 text-sm shadow-lg border;
+}
+
+.toast-inner-content {
+  @apply flex items-center gap-3;
+}
+
+.toast-success {
+  @apply bg-lime-100 border-lime-300 text-lime-800;
+}
+
+.toast-error {
+  @apply bg-red-100 border-red-300 text-red-800;
+}
+
+.toast-close {
+  @apply flex items-center justify-center w-7 h-7 rounded-full hover:bg-black/5;
+}
 /* Styles pour le scanner QR */
 #qr-reader {
   max-width: 500px;

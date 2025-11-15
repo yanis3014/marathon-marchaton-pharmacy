@@ -196,6 +196,8 @@ export default function Admin() {
   const filtered = list.filter((p) =>
     (p.fullName || "").toLowerCase().includes(search.toLowerCase())
   );
+  const isErrorMsg =
+    msg && (msg.startsWith("❌") || msg.toLowerCase().includes("erreur"));
 
   return (
     <>
@@ -215,8 +217,24 @@ export default function Admin() {
           </div>
         </div>
         {msg && (
-          <div className="rounded-xl border border-lime-300 bg-lime-100 text-lime-800 p-3">
-            {msg}
+          <div className="toast-fixed">
+            <div
+              className={`toast-inner ${
+                isErrorMsg ? "toast-error" : "toast-success"
+              }`}
+            >
+              <div className="toast-inner-content">
+                <div className="flex-1">{msg}</div>
+                <button
+                  type="button"
+                  className="toast-close"
+                  onClick={() => setMsg("")}
+                  aria-label="Fermer le message"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
           </div>
         )}
         <div className="card">
