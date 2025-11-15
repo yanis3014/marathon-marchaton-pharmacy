@@ -108,7 +108,6 @@ export default function Admin() {
   async function load(currentToken = token) {
     try {
       setLoading(true);
-      setMsg("");
       const res = await fetch(`${API}/api/registrations`, {
         headers: { "x-admin-token": currentToken },
         cache: "no-store",
