@@ -216,27 +216,6 @@ export default function Admin() {
             </button>
           </div>
         </div>
-        {msg && (
-          <div className="toast-fixed">
-            <div
-              className={`toast-inner ${
-                isErrorMsg ? "toast-error" : "toast-success"
-              }`}
-            >
-              <div className="toast-inner-content">
-                <div className="flex-1">{msg}</div>
-                <button
-                  type="button"
-                  className="toast-close"
-                  onClick={() => setMsg("")}
-                  aria-label="Fermer le message"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
         <div className="card">
           <div className="card-inner flex flex-col md:flex-row items-center gap-4">
             <h3 className="h2 text-xl mb-2 md:mb-0 whitespace-nowrap">
@@ -366,6 +345,28 @@ export default function Admin() {
           </table>
         </div>
       </main>
+
+      {msg && (
+        <div className="modal-overlay" onClick={() => setMsg("")}>
+          <div
+            className={`modal-content modal-feedback ${
+              isErrorMsg ? "modal-feedback-error" : "modal-feedback-success"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-feedback-icon">
+              {isErrorMsg ? "❌" : "✅"}
+            </div>
+            <p className="modal-feedback-text">{msg}</p>
+            <button
+              className="btn btn-primary mt-4 w-full"
+              onClick={() => setMsg("")}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       {isModalOpen && selectedParticipant && (
         <div className="modal-overlay" onClick={closeModal}>
